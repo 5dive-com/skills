@@ -93,6 +93,29 @@ sudo 5dive agent logs worker-1 --tmux --lines=80
 sudo 5dive agent rm worker-1 --json
 ```
 
+#### Skill inheritance on agent-spawned children
+
+When an agent (you, `SUDO_USER=agent-*`) creates another **claude-typed** agent,
+the CLI auto-installs the `5dive-cli` skill into the child so it inherits
+inter-agent comms knowledge. Humans creating from the dashboard don't get this
+default. Override either way:
+
+- `--with-skills=<spec>[,<spec>...]` — explicit list. Each spec is a bare id
+  (defaults to `5dive-com/skills`) or `<owner/repo>:<id>`.
+  Example: `--with-skills=5dive-cli,acme/skills:db-tools`.
+- `--no-skills` — opt out, even when called from another agent.
+
+#### Create-then-auth: `--defer-auth`
+
+Use when you want the agent registered before its credentials are wired up
+(e.g. the agent's own first-run UI will handle sign-in). Skips the auth gate
+on `agent create`; combine with `--auth-profile=<name>` to bind a profile slot
+that doesn't yet have a `combined.env`.
+
+```bash
+sudo 5dive agent create draft-bot --type=claude --defer-auth --json
+```
+
 ### Fan out: same prompt, three different models
 
 Useful for "let me see how Codex/Gemini/Claude each approach this".
@@ -133,6 +156,68 @@ sudo 5dive agent auth start claude --json
 Never call `5dive agent auth login <type>` from your own process — it
 hands the TTY off to the upstream CLI's interactive flow and hangs your
 agent. Use `auth start` / `auth set` instead.
+
+### Multi-account: the `account` noun
+
+A 5dive **account** is a named auth profile — one bag of credentials that any
+number of agents can share via `--auth-profile=<name>`. Use it when the host
+has more than one human / billing identity (e.g. work + personal Anthropic
+sign-ins) and different agents should use different ones.
+
+`5dive account ...` is the user-facing surface; the lower-level
+`agent auth start|poll|submit|cancel` verbs are still what the dashboard's
+device-code flow uses, and what you should use from a script.
+
+```bash
+# Inventory: which named accounts exist, what types each is signed into,
+# and how many agents are bound to each.
+sudo 5dive account list --json
+
+# Detail for one account, including which env keys are populated.
+sudo 5dive account show acme-prod --json
+
+# Provision a new empty account, then sign it in (TTY-only — humans).
+sudo 5dive account add acme-prod
+sudo 5dive account login acme-prod --type=claude
+
+# Rebind an existing agent to a different account. Restarts the agent so
+# the new EnvironmentFile takes effect.
+sudo 5dive agent set-account worker-1 acme-prod --json
+sudo 5dive agent set-account worker-1 default --json   # clears the override
+
+# Rename / remove. `remove` refuses while any agents are still bound.
+sudo 5dive account rename acme-prod acme-staging --json
+sudo 5dive account remove acme-staging --json
+```
+
+The reserved name `default` is rejected by `account add` / `rename` — at the
+agent level, `auth-profile=default` already means "no override, use the shared
+`/etc/5dive/connectors/<type>.env`".
+
+### Pair a Telegram channel without a bot reply
+
+`agent pair` accepts three input shapes:
+
+```bash
+# A) Classic — return a pairing code, user DMs the bot, paste the bot reply.
+sudo 5dive agent pair worker-1 --json
+sudo 5dive agent pair worker-1 --code=AB12CD --json
+
+# B) Auto-detect — long-poll Telegram for the next inbound message and
+#    seed access.json from whoever DMs the bot first. Useful in onboarding
+#    flows where the user has the bot open already.
+sudo 5dive agent telegram-discover --token="$BOT_TOKEN" --poll-secs=60 --json
+# -> {found:true, userId, chatId, ...}; re-poll on {found:false}.
+sudo 5dive agent pair worker-1 --user-id=<userId> --chat-id=<chatId> --json
+
+# C) Bot identity for deep links — fast getMe lookup so the dashboard can
+#    render a tappable t.me/<bot> link alongside the "send /start" prompt.
+sudo 5dive agent telegram-getme --token="$BOT_TOKEN" --json
+# -> {ok:true, data:{botId, username, firstName}}
+```
+
+`telegram-discover` and `telegram-getme` are read-only (no registry mutation,
+no audit log) and do not require a bound agent.
 
 ### Talking to other agents (inter-agent comms)
 

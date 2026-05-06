@@ -6,8 +6,9 @@ on the host is authoritative; this file is the canonical reference shape.
 ## Top-level
 
 ```
-5dive agent ...                      # agent CRUD
-5dive doctor [--repair] [--category=deps|types|auth|registry|shelld]
+5dive agent   ...                    # agent CRUD
+5dive account ...                    # named auth profiles
+5dive doctor  [--repair] [--category=deps|types|auth|registry|shelld]
 5dive --help | -h | help
 ```
 
@@ -19,9 +20,14 @@ on the host is authoritative; this file is the canonical reference shape.
 5dive agent create <name> --type=<type>
                           [--channels=none|telegram|discord]
                           [--telegram-token=<bot-token>]
+                          [--telegram-home-channel=<chat-id>]   # hermes only
+                          [--telegram-allowed-users=<csv-ids>]  # hermes only
                           [--discord-token=<token>]
                           [--workdir=<path>]
                           [--auth-profile=<name>]
+                          [--with-skills=<spec>[,<spec>...]]    # bare id (5dive-com/skills) or owner/repo:id
+                          [--no-skills]                          # opt out (overrides agent-spawn default)
+                          [--defer-auth]                         # skip auth gate; first-run UI handles it
 5dive agent clone <src> <dst> [--channels=...] [--telegram-token=...]
                               [--discord-token=...] [--workdir=...]
 5dive agent start   <name>
@@ -30,10 +36,16 @@ on the host is authoritative; this file is the canonical reference shape.
 5dive agent rm      <name>
 5dive agent stats   <name>
 5dive agent logs    <name> [--follow] [--lines=N] [--tmux]
-5dive agent send    <name> <text...>
+5dive agent send    <name> <text...> [--from=<sender>] [--raw]
+5dive agent ask     <name> <text...> [--from=<sender>] [--timeout=120] [--idle-secs=5] [--poll-secs=2]
 5dive agent <name>  tui                       # attach this terminal
 5dive agent install <type>                    # install the type's binary
+5dive agent set-account <agent> <account|default>   # alias for `agent config set auth-profile=`
 ```
+
+When `agent create` runs from another agent (`SUDO_USER=agent-*`) on a
+`claude` type, `--with-skills=5dive-cli` is the default. Pass `--no-skills`
+to opt out, or `--with-skills=...` to override the list explicitly.
 
 ## Config
 
@@ -48,11 +60,14 @@ on the host is authoritative; this file is the canonical reference shape.
 ## Pairing (Telegram / Discord)
 
 ```
-5dive agent pair <name>                        # returns a code; user DMs the bot
-5dive agent pair <name> --code=<code>          # paste bot reply or bare code
+5dive agent pair <name>                                       # returns a code; user DMs the bot
+5dive agent pair <name> --code=<code>                         # paste bot reply or bare code
+5dive agent pair <name> --user-id=<id> [--chat-id=<id>]       # seed access.json directly; chat_id defaults to user_id (private DM)
+5dive agent telegram-discover --token=<bot-token> [--poll-secs=N]    # long-poll getUpdates; returns {found, userId, chatId, ...}
+5dive agent telegram-getme    --token=<bot-token>                    # getMe — {botId, username, firstName}
 ```
 
-## Auth
+## Auth (lower-level — prefer `account` for human flows)
 
 ```
 5dive agent auth status [--probe] [--type=<type>]
@@ -64,6 +79,19 @@ on the host is authoritative; this file is the canonical reference shape.
 5dive agent auth submit <session_id> --code=<callback>
 5dive agent auth cancel <session_id>
 ```
+
+## Accounts (named auth profiles)
+
+```
+5dive account list                                   # name, types signed in, # agents bound
+5dive account show   <name>                          # detail incl. envKeys present
+5dive account add    <name>                          # create empty account; sign in next
+5dive account login  <name> --type=<type>            # TTY-only interactive login into an account
+5dive account rename <old> <new>                     # repoints + restarts every bound agent
+5dive account remove <name>                          # refuses if any agents still bound
+```
+
+The reserved name `default` is rejected by `account add` / `rename`.
 
 ## Skills
 
