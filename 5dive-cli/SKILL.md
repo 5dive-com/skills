@@ -95,10 +95,10 @@ sudo 5dive agent rm worker-1 --json
 
 #### Skill inheritance on agent-spawned children
 
-When an agent (you, `SUDO_USER=agent-*`) creates another **claude-typed** agent,
-the CLI auto-installs the `5dive-cli` skill into the child so it inherits
-inter-agent comms knowledge. Humans creating from the dashboard don't get this
-default. Override either way:
+When an agent (you, `SUDO_USER=agent-*`) creates another agent of any
+supported type, the CLI auto-installs the `5dive-cli` skill into the child
+so it inherits inter-agent comms knowledge. Humans creating from the
+dashboard don't get this default. Override either way:
 
 - `--with-skills=<spec>[,<spec>...]` — explicit list. Each spec is a bare id
   (defaults to `5dive-com/skills`) or `<owner/repo>:<id>`.

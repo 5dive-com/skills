@@ -25,6 +25,7 @@ on the host is authoritative; this file is the canonical reference shape.
                           [--discord-token=<token>]
                           [--workdir=<path>]
                           [--auth-profile=<name>]
+                          [--isolation=admin|standard|sandboxed] # default admin
                           [--with-skills=<spec>[,<spec>...]]    # bare id (5dive-com/skills) or owner/repo:id
                           [--no-skills]                          # opt out (overrides agent-spawn default)
                           [--defer-auth]                         # skip auth gate; first-run UI handles it
@@ -43,9 +44,10 @@ on the host is authoritative; this file is the canonical reference shape.
 5dive agent set-account <agent> <account|default>   # alias for `agent config set auth-profile=`
 ```
 
-When `agent create` runs from another agent (`SUDO_USER=agent-*`) on a
-`claude` type, `--with-skills=5dive-cli` is the default. Pass `--no-skills`
-to opt out, or `--with-skills=...` to override the list explicitly.
+When `agent create` runs from another agent (`SUDO_USER=agent-*`),
+`--with-skills=5dive-cli` is the default for every supported type. Pass
+`--no-skills` to opt out, or `--with-skills=...` to override the list
+explicitly.
 
 ## Config
 
