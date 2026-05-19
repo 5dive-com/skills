@@ -296,26 +296,32 @@ agent the chat context and tell it to post directly via its own bot —
 attribution stays clean, the conversation reads naturally, and you stop
 being a middleman.
 
-When using `agent send` / `agent ask` on behalf of a chat user, include in
-the prompt:
-
-- the originating `chat_id` (and the inbound `message_id` if you want
-  thread replies),
-- the requesting user's handle and which bot they pinged,
-- an explicit instruction: "reply directly in that chat via your own bot —
-  do not reply to me here".
-
-Example:
+The CLI has structural support for this: `--reply-to-chat=<id>` (and
+optional `--reply-to-msg=<id>` for thread replies) stamps the envelope so
+the receiver gets a machine-readable hint instead of relying on you
+describing the chat in prose.
 
 ```bash
 sudo 5dive agent send marketing \
-  "User @alice (Telegram chat_id=-100123…) asked @ops_bot to get your take
-   on the Q3 launch copy. Your bot @mkt_bot is in that chat — please reply
-   there directly via your Telegram tool. Do NOT reply back to me."
+  --reply-to-chat=-100123456 --reply-to-msg=482 \
+  "User @alice asked your take on the Q3 launch copy. Reply in the chat
+   via your own bot — do not reply back to me."
 ```
 
-If the target agent's bot is **not** in the chat, fall back to relaying
-through your own channel and tell the user the bot needs to be added.
+Receiver-side, the inbound envelope looks like:
+
+```
+[5dive-msg from=ops id=ab12cd34 reply-to-chat=-100123456 reply-to-msg=482] ...
+```
+
+When you see `reply-to-chat=<id>` on an incoming message, post your answer
+directly in that chat via your own Telegram/Discord tool. Use
+`reply-to-msg=<id>` as the threaded `reply_to` so the message lands as a
+quote-reply. Do not also send a peer reply back to the sender — they have
+opted out of being a relay.
+
+If the target agent's bot is **not** in the chat, omit the flag, relay the
+reply yourself, and tell the user the bot needs to be added.
 
 #### Rules of thumb
 
