@@ -1,6 +1,6 @@
 ---
 name: 5dive-cli
-description: Use the local `5dive` CLI on a 5dive runtime VM to spawn, inspect, send to, and tear down sibling agents. Trigger this skill whenever the user asks for a worker, sub-agent, side task, parallel run, "another agent", "fan out", "delegate", or anything that needs more than one Claude/Codex/Gemini process running at once on the host. Also trigger when the user asks to inspect, restart, or pair an existing agent, when they mention `/var/lib/5dive/`, or when they need a machine-readable health check (`5dive doctor --json`). Always prefer `5dive` over running coding CLIs by hand — it is the only sanctioned way to keep agents under systemd.
+description: Use the local `5dive` CLI on a 5dive runtime VM to spawn, inspect, send to, and tear down sibling agents. Trigger this skill whenever the user asks for a worker, sub-agent, side task, parallel run, "another agent", "fan out", "delegate", or names a sibling agent in natural language ("redirect to X", "ask X", "ping X", "tell X", "coordinate with X", "hand off to X") — in those cases confirm the agent exists with `5dive agent list --json` first, then `agent send`. Also trigger when the user asks to inspect, restart, or pair an existing agent, when they mention `/var/lib/5dive/`, or when they need a machine-readable health check (`5dive doctor --json`). When the user's request arrived over a chat channel (Telegram/Discord `<channel>` tag) and they want another agent involved, hand off the chat context via `--reply-to-chat=<id> --reply-to-msg=<id>` so the target agent replies directly in the chat from its own bot — don't relay. Always prefer `5dive` over running coding CLIs by hand — it is the only sanctioned way to keep agents under systemd.
 ---
 
 # 5dive-cli
@@ -16,6 +16,11 @@ Use it whenever the work in front of you would benefit from a second pair of
 hands — for example:
 
 - The user asks for a "worker", "sub-agent", "another agent", or "side task".
+- **The user names a specific sibling agent** — "redirect to marketing",
+  "ask scout", "ping ops", "tell research", "coordinate with X", "hand off
+  to X". First confirm the agent exists via `sudo 5dive agent list --json`,
+  then `agent send` (and pass chat context if the request came from a
+  channel — see "Delegating a request that came in over a channel" below).
 - A long task could fan out into independent pieces (e.g. audit each route
   in parallel, run a different model on the same prompt, A/B two implementations).
 - You need to keep one agent on a hot context while a second one investigates
@@ -301,9 +306,27 @@ optional `--reply-to-msg=<id>` for thread replies) stamps the envelope so
 the receiver gets a machine-readable hint instead of relying on you
 describing the chat in prose.
 
+**Where the chat_id and message_id come from.** When the user's request
+arrives via the channel plugin (Telegram or Discord), it's surfaced to you
+wrapped in a `<channel>` tag whose attributes already carry exactly what
+the flags want:
+
+```
+<channel source="plugin:telegram:telegram" chat_id="433634012" message_id="4671" user="..." ts="...">
+redirect to marketing
+</channel>
+```
+
+The mapping is one-for-one:
+
+- `chat_id` attribute → `--reply-to-chat=<chat_id>`
+- `message_id` attribute → `--reply-to-msg=<message_id>` (optional; threads the reply)
+
+So the handoff looks like:
+
 ```bash
 sudo 5dive agent send marketing \
-  --reply-to-chat=-100123456 --reply-to-msg=482 \
+  --reply-to-chat=433634012 --reply-to-msg=4671 \
   "User @alice asked your take on the Q3 launch copy. Reply in the chat
    via your own bot — do not reply back to me."
 ```
@@ -311,7 +334,7 @@ sudo 5dive agent send marketing \
 Receiver-side, the inbound envelope looks like:
 
 ```
-[5dive-msg from=ops id=ab12cd34 reply-to-chat=-100123456 reply-to-msg=482] ...
+[5dive-msg from=ops id=ab12cd34 reply-to-chat=433634012 reply-to-msg=4671] ...
 ```
 
 When you see `reply-to-chat=<id>` on an incoming message, post your answer
@@ -359,6 +382,14 @@ fixes (apt installs, type installer recipes, registry reseed).
    authoritative.
 7. **The `auth login <type>` path is interactive only.** Never call it
    from your own session.
+8. **When delegating a chat request, don't relay — hand off context.**
+   If a user pings you in a Telegram/Discord chat that another agent's
+   bot also belongs to and asks you to involve that agent, use
+   `agent send --reply-to-chat=<id> --reply-to-msg=<id>` (values come
+   straight from the inbound `<channel>` tag's attributes). The target
+   replies directly in the chat from its own bot — relaying through you
+   adds latency, breaks attribution, and makes the user re-read your
+   paraphrase of the answer.
 
 ## Reference
 
