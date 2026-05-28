@@ -154,11 +154,17 @@ A single self-referential `reports_to` edge per agent, plus optional role/title.
 
 ## Known agent types (default install)
 
-| Type      | Channels | Notes |
-| --------- | -------- | ----- |
-| claude    | yes      | Anthropic Claude Code |
-| codex     | no       | OpenAI Codex CLI |
-| gemini    | no       | Google Gemini CLI |
-| hermes    | yes      | Nous Research hermes harness (OpenAI-backed) |
-| openclaw  | yes      | Third-party Claude harness (OpenAI-backed) |
-| opencode  | no       | opencode.ai (free models, no signup) |
+| Type        | Channels | Notes |
+| ----------- | -------- | ----- |
+| antigravity | no       | Google Antigravity CLI (binary: `agy`) |
+| claude      | yes      | Anthropic Claude Code |
+| codex       | yes      | OpenAI Codex CLI |
+| gemini      | no       | Google Gemini CLI |
+| grok        | no       | xAI Grok CLI |
+| hermes      | yes      | Nous Research hermes harness (OpenAI-backed) |
+| openclaw    | yes      | Third-party Claude harness (OpenAI-backed) |
+| opencode    | no       | opencode.ai (free models, no signup) |
+
+`channels=yes` means the type can take `--channels=telegram` (and, for
+claude/openclaw, `--channels=discord`). Run `5dive agent types` on the host
+for the authoritative list — installers add or drop entries over time.

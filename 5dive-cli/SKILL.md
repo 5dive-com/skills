@@ -43,7 +43,11 @@ Everything the CLI does maps onto these resources on the host:
 - Auth is decoupled. You authenticate a *type* once; every agent of that
   type inherits the credentials via `EnvironmentFile`.
 - A **channel** (`telegram` / `discord` / `none`) is the inbound message
-  surface. Channels are only supported by `claude`, `openclaw`, `hermes`.
+  surface. `--channels=telegram` is supported by `claude`, `codex`,
+  `openclaw`, and `hermes`; `--channels=discord` by `claude` and
+  `openclaw`. Other types (`gemini`, `grok`, `antigravity`, `opencode`)
+  are launcher-only — they run on the host but can't receive inbound chat
+  messages from a bot.
 - The CLI is idempotent and safe to call from another agent — your agent
   user is in the `claude` group and has `sudo 5dive ...` whitelisted.
 
